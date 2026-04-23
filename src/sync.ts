@@ -44,7 +44,7 @@ async function syncConnection(connection: Connection, config: Config) {
         date: t.timestamp.split('T')[0]!,
         amount: Math.round(t.amount * 100),
         payee_name: t.description,
-        notes: t.transaction_id,
+        imported_id: t.transaction_id,
         cleared: true,
       }))
 
