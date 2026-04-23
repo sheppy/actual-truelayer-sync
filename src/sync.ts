@@ -3,7 +3,7 @@ import axios from 'axios'
 import cron from 'node-cron'
 import { loadConfig, writeConfig } from './config'
 import type { Connection, Config } from './config'
-import type { TrueLayerTokenResponse, TrueLayerTransaction } from './types'
+import type { TrueLayerTokenResponse, TrueLayerTransaction, TrueLayerAccount } from './types'
 
 async function syncConnection(connection: Connection, config: Config) {
   console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
@@ -16,6 +16,19 @@ async function syncConnection(connection: Connection, config: Config) {
 
     const { access_token, refresh_token: newRefreshToken } = tokenRes.data
     connection.refreshToken = newRefreshToken
+
+    // Fetch all accounts from TrueLayer and log any not present in config
+    const accountsRes = await axios.get<{ results: TrueLayerAccount[] }>('https://api.truelayer.com/data/v1/accounts', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    })
+    const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
+    const unmatched = accountsRes.data.results.filter((a) => !(a.account_id && configuredIds.has(a.account_id)))
+    if (unmatched.length > 0) {
+      console.log(`[${connection.name}] Unmatched TrueLayer accounts (not in config):`)
+      for (const a of unmatched) {
+        console.log(`  - ${a.display_name} (${a.account_type}) — truelayerId: ${a.account_id}`)
+      }
+    }
 
     for (const account of connection.accounts) {
       console.log(`Fetching ${account.friendlyName}...`)

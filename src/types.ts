@@ -1,3 +1,22 @@
+export type TrueLayerAccount = {
+  update_timestamp: string
+  account_id?: string
+  account_type?: 'TRANSACTION' | 'SAVINGS' | 'BUSINESS_TRANSACTION' | 'BUSINESS_SAVINGS'
+  currency: TrueLayerCurrency
+  display_name: string
+  account_number: {
+    number?: string
+    sort_code?: string
+    swift_bic?: string
+    iban?: string
+    routing_number?: string
+    bsb?: string
+  }
+  provider: {
+    provider_id: string
+  }
+}
+
 export type Secrets = {
   clientId: string
   clientSecret: string
