@@ -10,5 +10,10 @@
   "license": "MIT",
   "engines": {
     "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@actual-app/api": "26.4.0",
+    "axios": "1.15.2",
+    "node-cron": "4.2.1"
   }
 }
