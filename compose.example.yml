@@ -1,0 +1,14 @@
+services:
+  actual-sync:
+    image: local/actual-truelayer-sync:v1
+    container_name: actual-truelayer-sync
+    restart: unless-stopped
+    volumes:
+      - ./actual-sync/data:/app/data # This is where your config.json lives
+    environment:
+      - ACTUAL_SERVER_URL=http://[HOST_IP]:5006
+      - ACTUAL_SERVER_PASSWORD=[PASSWORD]
+      - ACTUAL_SYNC_ID=[SYNC_ID]
+      - TRUELAYER_CLIENT_ID=[TRUELAYER_CLIENT_ID]
+      - TRUELAYER_CLIENT_SECRET=[TRUELAYER_CLIENT_SECRET]
+      - CRON_SCHEDULE=0 */4 * * * # Example: Every 4 hours
