@@ -77,6 +77,7 @@ async function mainTask() {
     await actual.init({
       serverURL: process.env.ACTUAL_SERVER_URL ?? '',
       password: process.env.ACTUAL_SERVER_PASSWORD ?? '',
+      verbose: !!process.env.DEBUG,
     })
     await actual.downloadBudget(process.env.ACTUAL_SYNC_ID ?? '')
 
