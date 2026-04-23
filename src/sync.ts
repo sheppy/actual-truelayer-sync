@@ -1,5 +1,4 @@
-import actual from '@actual-app/api'
-import type { ImportTransactionEntity } from '@actual-app/core/types/models'
+import * as actual from '@actual-app/api'
 import axios from 'axios'
 import fs from 'fs'
 import path from 'path'
@@ -31,17 +30,14 @@ async function syncConnection(connection: Connection, globalSecrets: Secrets) {
         },
       )
 
-      const transactions = transRes.data.results.map(
-        (t) =>
-          ({
-            account: account.actualId,
-            date: t.timestamp.split('T')[0]!,
-            amount: Math.round(t.amount * 100),
-            payee_name: t.description,
-            notes: t.transaction_id,
-            cleared: true,
-          }) satisfies ImportTransactionEntity,
-      )
+      const transactions = transRes.data.results.map((t) => ({
+        account: account.actualId,
+        date: t.timestamp.split('T')[0]!,
+        amount: Math.round(t.amount * 100),
+        payee_name: t.description,
+        notes: t.transaction_id,
+        cleared: true,
+      }))
 
       if (transactions.length > 0) {
         await actual.importTransactions(account.actualId, transactions)
