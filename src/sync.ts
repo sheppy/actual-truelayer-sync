@@ -45,6 +45,8 @@ async function syncConnection(connection: Connection, config: Config) {
         amount: Math.round(t.amount * 100),
         payee_name: t.description,
         imported_id: t.transaction_id,
+        // TODO: Make configurable
+        notes: t.transaction_category !== 'UNKNOWN' ? t.transaction_category : undefined,
         cleared: true,
       }))
 
