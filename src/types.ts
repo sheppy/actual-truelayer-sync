@@ -3,18 +3,6 @@ export type Secrets = {
   clientSecret: string
 }
 
-export type Account = {
-  truelayerId: string
-  actualId: string
-  friendlyName: string
-}
-
-export type Connection = {
-  name: string
-  refreshToken: string
-  accounts: Account[]
-}
-
 export type TrueLayerTokenResponse = {
   access_token: string
   expires_in: number

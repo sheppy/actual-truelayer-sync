@@ -30,7 +30,14 @@
 
     // Skips type checking of all declaration files (*.d.ts)
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "6.0",
+
+    // Redirect @actual-app/api to our shim to prevent TypeScript from traversing
+    // @actual-app/core's raw .ts source files
+    "baseUrl": ".",
+    "paths": {
+      "@actual-app/api": ["src/actual-api.ts"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

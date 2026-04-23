@@ -1,30 +1,23 @@
-// @actual-app/api ships types that reference @actual-app/core's raw TypeScript source,
-// which is incompatible with strict tsconfig settings. We declare the module manually
-// with just the surface area we actually use, and redirect here via tsconfig `paths`.
-
-export interface InitOptions {
-  serverURL: string
-  password: string
-  verbose?: boolean
+// @actual-app/api is a CJS module that references @actual-app/core's raw TypeScript
+// source, which doesn't compile cleanly under strict mode. This ambient declaration
+// overrides the module's types with just the surface area we actually use.
+declare module '@actual-app/api' {
+  const actual: {
+    init(options: { serverURL: string; password: string; verbose?: boolean }): Promise<void>
+    downloadBudget(syncId: string): Promise<void>
+    importTransactions(
+      accountId: string,
+      transactions: {
+        date: string
+        amount: number
+        payee_name?: string
+        notes?: string
+        imported_id?: string
+        cleared?: boolean
+        account?: string
+      }[],
+    ): Promise<{ errors: unknown[]; added: string[]; updated: string[] }>
+    shutdown(): Promise<void>
+  }
+  export default actual
 }
-
-export interface ImportTransactionsResult {
-  errors: unknown[]
-  added: string[]
-  updated: string[]
-}
-
-export interface ActualTransaction {
-  date: string
-  amount: number
-  payee_name?: string
-  notes?: string
-  imported_id?: string
-  cleared?: boolean
-  account?: string
-}
-
-export function init(options: InitOptions): Promise<void>
-export function downloadBudget(syncId: string): Promise<void>
-export function importTransactions(accountId: string, transactions: ActualTransaction[]): Promise<ImportTransactionsResult>
-export function shutdown(): Promise<void>

@@ -1,20 +1,16 @@
-import * as actual from '@actual-app/api'
+import actual from '@actual-app/api'
 import axios from 'axios'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import cron from 'node-cron'
-import type { Connection, Secrets, TrueLayerTokenResponse, TrueLayerTransaction } from './types.js'
+import { loadConfig, writeConfig } from './config'
+import type { Connection, Config } from './config'
+import type { TrueLayerTokenResponse, TrueLayerTransaction } from './types'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const configPath = path.join(__dirname, '..', 'data', 'config.json')
-
-async function syncConnection(connection: Connection, globalSecrets: Secrets) {
+async function syncConnection(connection: Connection, config: Config) {
   console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
   try {
     const tokenRes = await axios.post<TrueLayerTokenResponse>(
       'https://auth.truelayer.com/connect/token',
-      `grant_type=refresh_token&client_id=${globalSecrets.clientId}&client_secret=${globalSecrets.clientSecret}&refresh_token=${connection.refreshToken}`,
+      `grant_type=refresh_token&client_id=${config.env.TRUELAYER_CLIENT_ID}&client_secret=${config.env.TRUELAYER_CLIENT_SECRET}&refresh_token=${connection.refreshToken}`,
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     )
 
@@ -57,52 +53,52 @@ async function syncConnection(connection: Connection, globalSecrets: Secrets) {
   }
 }
 
-async function mainTask() {
-  if (!fs.existsSync(configPath)) {
-    console.error('config.json not found in /app/data')
-    return
-  }
-
-  const fullConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'))
-  const globalSecrets: Secrets = {
-    clientId: process.env.TRUELAYER_CLIENT_ID ?? '',
-    clientSecret: process.env.TRUELAYER_CLIENT_SECRET ?? '',
-  }
-
+async function mainTask(config: Config) {
   try {
     await actual.init({
-      serverURL: process.env.ACTUAL_SERVER_URL ?? '',
-      password: process.env.ACTUAL_SERVER_PASSWORD ?? '',
-      verbose: !!process.env.DEBUG,
+      serverURL: config.env.ACTUAL_SERVER_URL,
+      password: config.env.ACTUAL_SERVER_PASSWORD,
+      verbose: !!config.env.DEBUG,
     })
-    await actual.downloadBudget(process.env.ACTUAL_SYNC_ID ?? '')
+    await actual.downloadBudget(config.env.ACTUAL_SYNC_ID)
 
     let updatedAny = false
-    for (const conn of fullConfig.connections) {
-      const success = await syncConnection(conn, globalSecrets)
-      if (success) updatedAny = true
+    for (const conn of config.connections) {
+      const success = await syncConnection(conn, config)
+      if (success) {
+        updatedAny = true
+      }
     }
 
     if (updatedAny) {
-      fs.writeFileSync(configPath, JSON.stringify(fullConfig, null, 2), 'utf8')
-      console.log('Tokens updated in config.json.')
+      await writeConfig(config)
     }
   } catch (e) {
-    console.error('Global Sync Error:', (e as Error).message)
+    console.error('Global Sync Error:', String(e))
   } finally {
     await actual.shutdown()
     console.log('Sync cycle finished. Sleeping...')
   }
 }
 
-// 1. Run immediately on startup
-mainTask()
+void (async () => {
+  // Validate env vars and config file before doing anything else
+  let config: Config
+  try {
+    config = await loadConfig()
+  } catch (err) {
+    console.error(String(err))
+    process.exit(1)
+  }
 
-// 2. Schedule future runs
-const schedule = process.env.CRON_SCHEDULE
-if (schedule) {
-  console.log(`Scheduler initialized with pattern: ${schedule}`)
-  cron.schedule(schedule, () => {
-    mainTask()
-  })
-}
+  // 1. Run immediately on startup
+  await mainTask(config)
+
+  // 2. Optionally schedule future runs
+  if (config.env.CRON_SCHEDULE) {
+    console.log(`Scheduler initialized with pattern: ${config.env.CRON_SCHEDULE}`)
+    cron.schedule(config.env.CRON_SCHEDULE, () => {
+      mainTask(config)
+    })
+  }
+})()
