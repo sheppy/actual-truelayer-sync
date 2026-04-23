@@ -1,6 +1,6 @@
 services:
   actual-sync:
-    image: local/actual-truelayer-sync:v1
+    image: ghcr.io/sheppy/actual-truelayer-sync:latest
     container_name: actual-truelayer-sync
     restart: unless-stopped
     volumes:
