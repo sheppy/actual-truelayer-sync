@@ -44,16 +44,28 @@ export async function listCards(accessToken: string): Promise<TrueLayerCard[]> {
   return res.data.results
 }
 
-export async function getAccountTransactions(accessToken: string, accountId: string): Promise<TrueLayerTransaction[]> {
+export async function getAccountTransactions(
+  accessToken: string,
+  accountId: string,
+  from?: string,
+): Promise<TrueLayerTransaction[]> {
+  const params = from ? { from } : {}
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/accounts/${accountId}/transactions`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    params,
   })
   return res.data.results
 }
 
-export async function getCardTransactions(accessToken: string, cardId: string): Promise<TrueLayerTransaction[]> {
+export async function getCardTransactions(
+  accessToken: string,
+  cardId: string,
+  from?: string,
+): Promise<TrueLayerTransaction[]> {
+  const params = from ? { from } : {}
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/cards/${cardId}/transactions`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    params,
   })
   return res.data.results
 }

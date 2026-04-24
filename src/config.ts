@@ -11,6 +11,7 @@ const AccountSchema = z.object({
   friendlyName: z.string().min(1),
   isCard: z.boolean().optional(),
   flip: z.boolean().optional(),
+  lastSyncDate: z.string().date().optional(),
 })
 
 const ConnectionSchema = z.object({

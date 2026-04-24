@@ -7,7 +7,7 @@ import { transformTransactions } from './transform'
 import type { Connection, Config } from './config'
 import type { TrueLayerAccount, TrueLayerCard } from './types'
 
-async function syncConnection(connection: Connection, config: Config): Promise<boolean> {
+async function syncConnection(connection: Connection, config: Config): Promise<void> {
   const startedAt = Date.now()
   console.log(`\n[${connection.name}] --- Syncing @ ${new Date().toISOString()} ---`)
   console.log(`[${connection.name}] Authenticating with TrueLayer...`)
@@ -55,22 +55,33 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
 
     for (const configAccount of connection.accounts) {
       const prefix = `[${connection.name}][${configAccount.friendlyName}]`
-      console.log(`${prefix} Fetching transactions...`)
+
+      // Compute from date: lastSyncDate minus 14-day overlap, or undefined for first run
+      let fromDate: string | undefined
+      if (configAccount.lastSyncDate) {
+        const d = new Date(configAccount.lastSyncDate)
+        d.setDate(d.getDate() - 14)
+        fromDate = d.toISOString().slice(0, 10)
+      }
+
+      console.log(`${prefix} Fetching transactions${fromDate ? ` since ${fromDate}` : ''}...`)
       const isCard = configAccount.isCard ?? connection.isCard ?? false
       const trueLayerTransactions = isCard
-        ? await getCardTransactions(access_token, configAccount.truelayerId)
-        : await getAccountTransactions(access_token, configAccount.truelayerId)
+        ? await getCardTransactions(access_token, configAccount.truelayerId, fromDate)
+        : await getAccountTransactions(access_token, configAccount.truelayerId, fromDate)
 
       const trueLayerAccount = trueLayerAccountsById.get(configAccount.truelayerId)
       const transactions = transformTransactions(trueLayerTransactions, configAccount, trueLayerAccount)
 
       if (transactions.length > 0) {
+        console.log(`${prefix} └ Found ${transactions.length} transactions.`)
         const dates = trueLayerTransactions.map((t) => t.timestamp).sort()
         const from = dates[0].slice(0, 10)
         const to = dates[dates.length - 1].slice(0, 10)
         const result = await importTransactions(configAccount.actualId, transactions)
         const added = result.added.length
         const updated = result.updated.length
+        configAccount.lastSyncDate = new Date().toISOString().slice(0, 10)
         let summary: string
         if (added > 0 && updated > 0) {
           summary = `Added ${added} and updated ${updated} transaction${updated === 1 ? '' : 's'}`
@@ -79,16 +90,15 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
         } else if (updated > 0) {
           summary = `Updated ${updated} transaction${updated === 1 ? '' : 's'}`
         } else {
-          summary = 'No new transactions'
+          summary = 'No new transactions to import'
         }
         console.log(`${prefix} └ ${summary} (${from} → ${to}).`)
       } else {
-        console.log(`${prefix} └ No new transactions.`)
+        console.log(`${prefix} └ No transactions.`)
       }
     }
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1)
     console.log(`[${connection.name}] Done in ${elapsed}s.`)
-    return tokenChanged
   } catch (err) {
     if (axios.isAxiosError(err)) {
       console.error(`[${connection.name}] Failed:`, err.response?.data ?? err.message)
@@ -97,7 +107,6 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
     } else {
       console.error(`[${connection.name}] Failed:`, err)
     }
-    return false
   }
 }
 
@@ -111,10 +120,9 @@ async function mainTask(config: Config) {
     })
 
     for (const connection of config.connections) {
-      const tokenChanged = await syncConnection(connection, config)
-      if (tokenChanged) {
-        await writeConfig(config)
-      }
+      await syncConnection(connection, config)
+      // Always write config to persist the lastSyncDate and token changes
+      await writeConfig(config)
     }
   } catch (e) {
     console.error('\nGlobal Sync Error:', String(e))
