@@ -8,7 +8,9 @@ import type { Connection, Config } from './config'
 import type { TrueLayerAccount, TrueLayerCard } from './types'
 
 async function syncConnection(connection: Connection, config: Config): Promise<boolean> {
-  console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
+  const startedAt = Date.now()
+  console.log(`\n[${connection.name}] --- Syncing @ ${new Date().toISOString()} ---`)
+  console.log(`[${connection.name}] Authenticating with TrueLayer...`)
   try {
     const { access_token, refresh_token: newRefreshToken } = await refreshToken(
       config.env.TRUELAYER_CLIENT_ID,
@@ -17,22 +19,28 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
     )
 
     const tokenChanged = newRefreshToken !== connection.refreshToken
-    console.log(`[${connection.name}] Refresh token ${tokenChanged ? 'CHANGED' : 'unchanged'}.`)
+    console.log(`[${connection.name}] └ Refresh token ${tokenChanged ? 'CHANGED' : 'unchanged'}.`)
     connection.refreshToken = newRefreshToken
 
     // Fetch all accounts/cards from TrueLayer, log unmatched, and build a map for flip inference
     let trueLayerAccountsById = new Map<string, TrueLayerAccount | TrueLayerCard>()
     try {
+      console.log(`[${connection.name}] Fetching ${connection.isCard ? 'card' : 'account'} details...`)
       const trueLayerAccounts = connection.isCard ? await listCards(access_token) : await listAccounts(access_token)
       trueLayerAccountsById = new Map(trueLayerAccounts.map((a) => [a.account_id, a]))
+      console.log(
+        `[${connection.name}] └ Found ${trueLayerAccounts.length} ${connection.isCard ? 'card' : 'account'}${trueLayerAccounts.length === 1 ? '' : 's'}.`,
+      )
 
       const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
       const unmatched = trueLayerAccounts.filter((a) => !configuredIds.has(a.account_id))
       if (unmatched.length > 0) {
-        console.log(`[${connection.name}] Unmatched TrueLayer accounts/cards (not in config):`)
+        console.log(
+          `[${connection.name}] Unmatched TrueLayer ${connection.isCard ? 'card' : 'account'} (not in config):`,
+        )
         for (const a of unmatched) {
           const detail = 'account_type' in a ? ` (${a.account_type})` : ` (${a.card_type})`
-          console.log(`  - ${a.display_name}${detail} — truelayerId: ${a.account_id}`)
+          console.log(`  - ${a.display_name}${detail} — trueLayerId: ${a.account_id}`)
         }
       }
     } catch (err) {
@@ -46,7 +54,8 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
     }
 
     for (const configAccount of connection.accounts) {
-      console.log(`Fetching ${configAccount.friendlyName}...`)
+      const prefix = `[${connection.name}][${configAccount.friendlyName}]`
+      console.log(`${prefix} Fetching transactions...`)
       const isCard = configAccount.isCard ?? connection.isCard ?? false
       const trueLayerTransactions = isCard
         ? await getCardTransactions(access_token, configAccount.truelayerId)
@@ -56,20 +65,25 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
       const transactions = transformTransactions(trueLayerTransactions, configAccount, trueLayerAccount)
 
       if (transactions.length > 0) {
+        const dates = trueLayerTransactions.map((t) => t.timestamp).sort()
+        const from = dates[0].slice(0, 10)
+        const to = dates[dates.length - 1].slice(0, 10)
         await importTransactions(configAccount.actualId, transactions)
-        console.log(`Imported ${transactions.length} items to ${configAccount.friendlyName}.`)
+        console.log(`${prefix} └ Imported ${transactions.length} items (${from} → ${to}).`)
       } else {
-        console.log(`No new transactions for ${configAccount.friendlyName}.`)
+        console.log(`${prefix} └ No new transactions.`)
       }
     }
+    const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1)
+    console.log(`[${connection.name}] Done in ${elapsed}s.`)
     return tokenChanged
   } catch (err) {
     if (axios.isAxiosError(err)) {
-      console.error(`Failed ${connection.name}:`, err.response?.data ?? err.message)
+      console.error(`[${connection.name}] Failed:`, err.response?.data ?? err.message)
     } else if (err instanceof Error) {
-      console.error(`Failed ${connection.name}:`, err.message)
+      console.error(`[${connection.name}] Failed:`, err.message)
     } else {
-      console.error(`Failed ${connection.name}:`, err)
+      console.error(`[${connection.name}] Failed:`, err)
     }
     return false
   }
@@ -91,10 +105,10 @@ async function mainTask(config: Config) {
       }
     }
   } catch (e) {
-    console.error('Global Sync Error:', String(e))
+    console.error('\nGlobal Sync Error:', String(e))
   } finally {
     await shutdownActual()
-    console.log('Sync cycle finished. Sleeping...')
+    console.log('\nSync cycle finished. Sleeping...')
   }
 }
 
