@@ -1,7 +1,7 @@
 export type TrueLayerAccount = {
   update_timestamp: string
-  account_id?: string
-  account_type?: 'TRANSACTION' | 'SAVINGS' | 'BUSINESS_TRANSACTION' | 'BUSINESS_SAVINGS'
+  account_id: string
+  account_type: 'TRANSACTION' | 'SAVINGS' | 'BUSINESS_TRANSACTION' | 'BUSINESS_SAVINGS'
   currency: TrueLayerCurrency
   display_name: string
   account_number: {
@@ -17,9 +17,20 @@ export type TrueLayerAccount = {
   }
 }
 
-export type Secrets = {
-  clientId: string
-  clientSecret: string
+export type TrueLayerCard = {
+  account_id: string
+  card_network: string
+  card_type: string
+  currency: TrueLayerCurrency
+  display_name: string
+  partial_card_number: string
+  name_on_card: string
+  valid_from?: string
+  valid_to?: string
+  update_timestamp: string
+  provider: {
+    provider_id: string
+  }
 }
 
 export type TrueLayerTokenResponse = {

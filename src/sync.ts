@@ -3,7 +3,7 @@ import axios from 'axios'
 import cron from 'node-cron'
 import { loadConfig, writeConfig } from './config'
 import type { Connection, Config } from './config'
-import type { TrueLayerTokenResponse, TrueLayerTransaction, TrueLayerAccount } from './types'
+import type { TrueLayerTokenResponse, TrueLayerTransaction, TrueLayerAccount, TrueLayerCard } from './types'
 
 async function syncConnection(connection: Connection, config: Config) {
   console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
@@ -17,32 +17,58 @@ async function syncConnection(connection: Connection, config: Config) {
     const { access_token, refresh_token: newRefreshToken } = tokenRes.data
     connection.refreshToken = newRefreshToken
 
-    // Fetch all accounts from TrueLayer and log any not present in config
-    const accountsRes = await axios.get<{ results: TrueLayerAccount[] }>('https://api.truelayer.com/data/v1/accounts', {
-      headers: { Authorization: `Bearer ${access_token}` },
-    })
-    const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
-    const unmatched = accountsRes.data.results.filter((a) => !(a.account_id && configuredIds.has(a.account_id)))
-    if (unmatched.length > 0) {
-      console.log(`[${connection.name}] Unmatched TrueLayer accounts (not in config):`)
-      for (const a of unmatched) {
-        console.log(`  - ${a.display_name} (${a.account_type}) — truelayerId: ${a.account_id}`)
+    // Fetch all accounts/cards from TrueLayer, log unmatched, and build a map for flip inference
+    let trueLayerAccountsById = new Map<string, TrueLayerAccount | TrueLayerCard>()
+    try {
+      const listRes = connection.isCard
+        ? await axios.get<{ results: TrueLayerCard[] }>('https://api.truelayer.com/data/v1/cards', {
+            headers: { Authorization: `Bearer ${access_token}` },
+          })
+        : await axios.get<{ results: TrueLayerAccount[] }>('https://api.truelayer.com/data/v1/accounts', {
+            headers: { Authorization: `Bearer ${access_token}` },
+          })
+
+      trueLayerAccountsById = new Map(listRes.data.results.map((a) => [a.account_id, a]))
+
+      const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
+      const unmatched = listRes.data.results.filter((a) => !configuredIds.has(a.account_id))
+      if (unmatched.length > 0) {
+        console.log(`[${connection.name}] Unmatched TrueLayer accounts/cards (not in config):`)
+        for (const a of unmatched) {
+          const detail = 'account_type' in a ? ` (${a.account_type})` : ` (${a.card_type})`
+          console.log(`  - ${a.display_name}${detail} — truelayerId: ${a.account_id}`)
+        }
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.error === 'endpoint_not_supported') {
+        console.log(
+          `[${connection.name}] Provider does not support accounts listing — skipping unmatched account check.`,
+        )
+      } else {
+        throw err
       }
     }
 
     for (const account of connection.accounts) {
       console.log(`Fetching ${account.friendlyName}...`)
-      const transRes = await axios.get<{ results: TrueLayerTransaction[] }>(
-        `https://api.truelayer.com/data/v1/accounts/${account.truelayerId}/transactions`,
-        {
-          headers: { Authorization: `Bearer ${access_token}` },
-        },
-      )
+      const isCard = account.isCard ?? connection.isCard ?? false
+      const endpoint = isCard
+        ? `https://api.truelayer.com/data/v1/cards/${account.truelayerId}/transactions`
+        : `https://api.truelayer.com/data/v1/accounts/${account.truelayerId}/transactions`
+      const transRes = await axios.get<{ results: TrueLayerTransaction[] }>(endpoint, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      })
+
+      // Determine flip: explicit config takes precedence, then infer from card_type === 'CREDIT'
+      const trueLayerAccount = trueLayerAccountsById.get(account.truelayerId)
+      const isCreditCard =
+        trueLayerAccount !== undefined && 'card_type' in trueLayerAccount && trueLayerAccount.card_type === 'CREDIT'
+      const shouldFlip = account.flip ?? isCreditCard
 
       const transactions = transRes.data.results.map((t) => ({
         account: account.actualId,
         date: t.timestamp.split('T')[0]!,
-        amount: Math.round(t.amount * 100),
+        amount: Math.round(t.amount * 100) * (shouldFlip ? -1 : 1),
         payee_name: t.description,
         imported_id: t.transaction_id,
         // TODO: Make configurable

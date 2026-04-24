@@ -8,12 +8,15 @@ const AccountSchema = z.object({
   truelayerId: z.string().min(1),
   actualId: z.string().min(1),
   friendlyName: z.string().min(1),
+  isCard: z.boolean().optional(),
+  flip: z.boolean().optional(),
 })
 
 const ConnectionSchema = z.object({
   name: z.string().min(1),
   refreshToken: z.string().min(1),
-  accounts: z.array(AccountSchema).min(1),
+  isCard: z.boolean().optional(),
+  accounts: z.array(AccountSchema),
 })
 
 const FileConfigSchema = z.object({
