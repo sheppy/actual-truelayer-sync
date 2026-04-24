@@ -2,36 +2,29 @@ import actual from '@actual-app/api'
 import axios from 'axios'
 import cron from 'node-cron'
 import { loadConfig, writeConfig } from './config'
+import { refreshToken, listAccounts, listCards, getAccountTransactions, getCardTransactions } from './truelayer'
 import type { Connection, Config } from './config'
-import type { TrueLayerTokenResponse, TrueLayerTransaction, TrueLayerAccount, TrueLayerCard } from './types'
+import type { TrueLayerAccount, TrueLayerCard } from './types'
 
 async function syncConnection(connection: Connection, config: Config) {
   console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
   try {
-    const tokenRes = await axios.post<TrueLayerTokenResponse>(
-      'https://auth.truelayer.com/connect/token',
-      `grant_type=refresh_token&client_id=${config.env.TRUELAYER_CLIENT_ID}&client_secret=${config.env.TRUELAYER_CLIENT_SECRET}&refresh_token=${connection.refreshToken}`,
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    const { access_token, refresh_token: newRefreshToken } = await refreshToken(
+      config.env.TRUELAYER_CLIENT_ID,
+      config.env.TRUELAYER_CLIENT_SECRET,
+      connection.refreshToken,
     )
-
-    const { access_token, refresh_token: newRefreshToken } = tokenRes.data
     connection.refreshToken = newRefreshToken
 
     // Fetch all accounts/cards from TrueLayer, log unmatched, and build a map for flip inference
     let trueLayerAccountsById = new Map<string, TrueLayerAccount | TrueLayerCard>()
     try {
-      const listRes = connection.isCard
-        ? await axios.get<{ results: TrueLayerCard[] }>('https://api.truelayer.com/data/v1/cards', {
-            headers: { Authorization: `Bearer ${access_token}` },
-          })
-        : await axios.get<{ results: TrueLayerAccount[] }>('https://api.truelayer.com/data/v1/accounts', {
-            headers: { Authorization: `Bearer ${access_token}` },
-          })
+      const accountData = connection.isCard ? await listCards(access_token) : await listAccounts(access_token)
 
-      trueLayerAccountsById = new Map(listRes.data.results.map((a) => [a.account_id, a]))
+      trueLayerAccountsById = new Map(accountData.map((a) => [a.account_id, a]))
 
       const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
-      const unmatched = listRes.data.results.filter((a) => !configuredIds.has(a.account_id))
+      const unmatched = accountData.filter((a) => !configuredIds.has(a.account_id))
       if (unmatched.length > 0) {
         console.log(`[${connection.name}] Unmatched TrueLayer accounts/cards (not in config):`)
         for (const a of unmatched) {
@@ -52,12 +45,9 @@ async function syncConnection(connection: Connection, config: Config) {
     for (const account of connection.accounts) {
       console.log(`Fetching ${account.friendlyName}...`)
       const isCard = account.isCard ?? connection.isCard ?? false
-      const endpoint = isCard
-        ? `https://api.truelayer.com/data/v1/cards/${account.truelayerId}/transactions`
-        : `https://api.truelayer.com/data/v1/accounts/${account.truelayerId}/transactions`
-      const transRes = await axios.get<{ results: TrueLayerTransaction[] }>(endpoint, {
-        headers: { Authorization: `Bearer ${access_token}` },
-      })
+      const transactionData = isCard
+        ? await getCardTransactions(access_token, account.truelayerId)
+        : await getAccountTransactions(access_token, account.truelayerId)
 
       // Determine flip: explicit config takes precedence, then infer from card_type === 'CREDIT'
       const trueLayerAccount = trueLayerAccountsById.get(account.truelayerId)
@@ -65,7 +55,7 @@ async function syncConnection(connection: Connection, config: Config) {
         trueLayerAccount !== undefined && 'card_type' in trueLayerAccount && trueLayerAccount.card_type === 'CREDIT'
       const shouldFlip = account.flip ?? isCreditCard
 
-      const transactions = transRes.data.results.map((t) => ({
+      const transactions = transactionData.map((t) => ({
         account: account.actualId,
         date: t.timestamp.split('T')[0]!,
         amount: Math.round(t.amount * 100) * (shouldFlip ? -1 : 1),

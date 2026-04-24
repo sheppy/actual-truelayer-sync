@@ -1,0 +1,46 @@
+import axios from 'axios'
+import type { TrueLayerAccount, TrueLayerCard, TrueLayerTransaction, TrueLayerTokenResponse } from './types'
+
+const BASE_URL = 'https://api.truelayer.com/data/v1'
+const AUTH_URL = 'https://auth.truelayer.com/connect/token'
+
+export async function refreshToken(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string,
+): Promise<{ access_token: string; refresh_token: string }> {
+  const res = await axios.post<TrueLayerTokenResponse>(
+    AUTH_URL,
+    `grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${refreshToken}`,
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+  )
+  return { access_token: res.data.access_token, refresh_token: res.data.refresh_token }
+}
+
+export async function listAccounts(accessToken: string): Promise<TrueLayerAccount[]> {
+  const res = await axios.get<{ results: TrueLayerAccount[] }>(`${BASE_URL}/accounts`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return res.data.results
+}
+
+export async function listCards(accessToken: string): Promise<TrueLayerCard[]> {
+  const res = await axios.get<{ results: TrueLayerCard[] }>(`${BASE_URL}/cards`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return res.data.results
+}
+
+export async function getAccountTransactions(accessToken: string, accountId: string): Promise<TrueLayerTransaction[]> {
+  const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/accounts/${accountId}/transactions`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return res.data.results
+}
+
+export async function getCardTransactions(accessToken: string, cardId: string): Promise<TrueLayerTransaction[]> {
+  const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/cards/${cardId}/transactions`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  return res.data.results
+}
