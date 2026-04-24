@@ -3,7 +3,7 @@
 // overrides the module's types with just the surface area we actually use.
 declare module '@actual-app/api' {
   const actual: {
-    init(options: { serverURL: string; password: string; verbose?: boolean }): Promise<void>
+    init(options: { serverURL: string; password: string; verbose?: boolean; dataDir?: string }): Promise<void>
     downloadBudget(syncId: string): Promise<void>
     importTransactions(
       accountId: string,

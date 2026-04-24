@@ -8,7 +8,9 @@
     "start": "node dist/sync.js",
     "dev": "tsx --env-file=.env src/sync.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "check:types": "tsc --project tsconfig.build.json --noEmit"
+    "check:types": "tsc --project tsconfig.build.json --noEmit",
+    "docker:build": "docker build -t actual-truelayer-sync .",
+    "docker:run": "docker run --rm --env-file=.env -v ./data:/app/data actual-truelayer-sync"
   },
   "author": "Chris Sheppard",
   "license": "MIT",

@@ -100,6 +100,7 @@ async function mainTask(config: Config) {
       serverURL: config.env.ACTUAL_SERVER_URL,
       password: config.env.ACTUAL_SERVER_PASSWORD,
       verbose: !!config.env.DEBUG,
+      dataDir: './data',
     })
     await actual.downloadBudget(config.env.ACTUAL_SYNC_ID)
 
