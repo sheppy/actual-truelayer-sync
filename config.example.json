@@ -1,29 +1,58 @@
 {
   "connections": [
     {
-      "name": "My bank connection name",
+      "name": "My Bank",
       "refreshToken": "[TRUELAYER REFRESH TOKEN]",
       "accounts": [
         {
           "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
-          "friendlyName": "My friendly account name"
+          "friendlyName": "My Current Account"
         },
         {
           "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
-          "friendlyName": "My friendly other account"
+          "friendlyName": "My Joint Account",
+          "flip": true
+        },
+        {
+          "trueLayerId": "[TrueLayer account_id]",
+          "actualId": "[Actual Budget account_id]",
+          "friendlyName": "My Savings Account"
         }
       ]
     },
     {
-      "name": "My other bank connection",
+      "name": "My Credit Card Provider",
+      "refreshToken": "[TRUELAYER REFRESH TOKEN]",
+      "isCard": true,
+      "accounts": [
+        {
+          "trueLayerId": "[TrueLayer account_id]",
+          "actualId": "[Actual Budget account_id]",
+          "friendlyName": "My Credit Card"
+        }
+      ]
+    },
+    {
+      "name": "New Connection (ID Discovery)",
+      "refreshToken": "[TRUELAYER REFRESH TOKEN]",
+      "accounts": []
+    },
+    {
+      "name": "Mixed Connection",
       "refreshToken": "[TRUELAYER REFRESH TOKEN]",
       "accounts": [
         {
           "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
-          "friendlyName": "My savings account name"
+          "friendlyName": "My Current Account"
+        },
+        {
+          "trueLayerId": "[TrueLayer account_id]",
+          "actualId": "[Actual Budget account_id]",
+          "friendlyName": "My Credit Card",
+          "isCard": true
         }
       ]
     }
