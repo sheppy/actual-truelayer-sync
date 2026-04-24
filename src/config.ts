@@ -77,5 +77,5 @@ export async function writeConfig(config: Config): Promise<void> {
   const tmpPath = `${CONFIG_PATH}.tmp`
   await fs.writeFile(tmpPath, JSON.stringify(fileConfig, null, 2), 'utf-8')
   await fs.rename(tmpPath, CONFIG_PATH)
-  console.log('Tokens updated in config.json.')
+  console.log('Config saved.')
 }
