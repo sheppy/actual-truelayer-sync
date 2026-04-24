@@ -35,6 +35,7 @@ export function transformTransaction(
   trueLayerTransaction: TrueLayerTransaction,
   configAccount: Account,
   trueLayerAccount: TrueLayerAccount | TrueLayerCard | undefined,
+  includeCategoryInNotes: boolean,
 ): ActualTransaction {
   return {
     account: configAccount.actualId,
@@ -43,7 +44,9 @@ export function transformTransaction(
     payee_name: trueLayerTransaction.description,
     imported_id: trueLayerTransaction.transaction_id,
     notes:
-      trueLayerTransaction.transaction_category !== 'UNKNOWN' ? trueLayerTransaction.transaction_category : undefined,
+      includeCategoryInNotes && trueLayerTransaction.transaction_category !== 'UNKNOWN'
+        ? trueLayerTransaction.transaction_category
+        : undefined,
     cleared: true,
   }
 }
@@ -52,6 +55,9 @@ export function transformTransactions(
   trueLayerTransactions: TrueLayerTransaction[],
   configAccount: Account,
   trueLayerAccount: TrueLayerAccount | TrueLayerCard | undefined,
+  includeCategoryInNotes: boolean,
 ): ActualTransaction[] {
-  return trueLayerTransactions.map((t) => transformTransaction(t, configAccount, trueLayerAccount))
+  return trueLayerTransactions.map((t) =>
+    transformTransaction(t, configAccount, trueLayerAccount, includeCategoryInNotes),
+  )
 }

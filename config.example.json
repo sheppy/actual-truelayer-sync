@@ -1,4 +1,5 @@
 {
+  "includeCategoryInNotes": false,
   "connections": [
     {
       "name": "My Bank",

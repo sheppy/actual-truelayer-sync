@@ -22,6 +22,7 @@ const ConnectionSchema = z.object({
 })
 
 const FileConfigSchema = z.object({
+  includeCategoryInNotes: z.boolean().default(false),
   connections: z.array(ConnectionSchema).min(1),
 })
 

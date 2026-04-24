@@ -71,7 +71,12 @@ async function syncConnection(connection: Connection, config: Config): Promise<v
         : await getAccountTransactions(access_token, configAccount.trueLayerId, fromDate)
 
       const trueLayerAccount = trueLayerAccountsById.get(configAccount.trueLayerId)
-      const transactions = transformTransactions(trueLayerTransactions, configAccount, trueLayerAccount)
+      const transactions = transformTransactions(
+        trueLayerTransactions,
+        configAccount,
+        trueLayerAccount,
+        config.includeCategoryInNotes,
+      )
 
       if (transactions.length > 0) {
         console.log(`${prefix} └ Found ${transactions.length} transactions.`)
