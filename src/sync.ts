@@ -3,6 +3,7 @@ import cron from 'node-cron'
 import { loadConfig, writeConfig } from './config'
 import { initActual, importTransactions, shutdownActual } from './actual'
 import { refreshToken, listAccounts, listCards, getAccountTransactions, getCardTransactions } from './truelayer'
+import { transformTransactions } from './transform'
 import type { Connection, Config } from './config'
 import type { TrueLayerAccount, TrueLayerCard } from './types'
 
@@ -19,12 +20,11 @@ async function syncConnection(connection: Connection, config: Config) {
     // Fetch all accounts/cards from TrueLayer, log unmatched, and build a map for flip inference
     let trueLayerAccountsById = new Map<string, TrueLayerAccount | TrueLayerCard>()
     try {
-      const accountData = connection.isCard ? await listCards(access_token) : await listAccounts(access_token)
-
-      trueLayerAccountsById = new Map(accountData.map((a) => [a.account_id, a]))
+      const trueLayerAccounts = connection.isCard ? await listCards(access_token) : await listAccounts(access_token)
+      trueLayerAccountsById = new Map(trueLayerAccounts.map((a) => [a.account_id, a]))
 
       const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
-      const unmatched = accountData.filter((a) => !configuredIds.has(a.account_id))
+      const unmatched = trueLayerAccounts.filter((a) => !configuredIds.has(a.account_id))
       if (unmatched.length > 0) {
         console.log(`[${connection.name}] Unmatched TrueLayer accounts/cards (not in config):`)
         for (const a of unmatched) {
@@ -42,33 +42,19 @@ async function syncConnection(connection: Connection, config: Config) {
       }
     }
 
-    for (const account of connection.accounts) {
-      console.log(`Fetching ${account.friendlyName}...`)
-      const isCard = account.isCard ?? connection.isCard ?? false
-      const transactionData = isCard
-        ? await getCardTransactions(access_token, account.truelayerId)
-        : await getAccountTransactions(access_token, account.truelayerId)
+    for (const configAccount of connection.accounts) {
+      console.log(`Fetching ${configAccount.friendlyName}...`)
+      const isCard = configAccount.isCard ?? connection.isCard ?? false
+      const trueLayerTransactions = isCard
+        ? await getCardTransactions(access_token, configAccount.truelayerId)
+        : await getAccountTransactions(access_token, configAccount.truelayerId)
 
-      // Determine flip: explicit config takes precedence, then infer from card_type === 'CREDIT'
-      const trueLayerAccount = trueLayerAccountsById.get(account.truelayerId)
-      const isCreditCard =
-        trueLayerAccount !== undefined && 'card_type' in trueLayerAccount && trueLayerAccount.card_type === 'CREDIT'
-      const shouldFlip = account.flip ?? isCreditCard
-
-      const transactions = transactionData.map((t) => ({
-        account: account.actualId,
-        date: t.timestamp.split('T')[0]!,
-        amount: Math.round(t.amount * 100) * (shouldFlip ? -1 : 1),
-        payee_name: t.description,
-        imported_id: t.transaction_id,
-        // TODO: Make configurable
-        notes: t.transaction_category !== 'UNKNOWN' ? t.transaction_category : undefined,
-        cleared: true,
-      }))
+      const trueLayerAccount = trueLayerAccountsById.get(configAccount.truelayerId)
+      const transactions = transformTransactions(trueLayerTransactions, configAccount, trueLayerAccount)
 
       if (transactions.length > 0) {
-        await importTransactions(account.actualId, transactions)
-        console.log(`Imported ${transactions.length} items to ${account.friendlyName}.`)
+        await importTransactions(configAccount.actualId, transactions)
+        console.log(`Imported ${transactions.length} items to ${configAccount.friendlyName}.`)
       }
     }
     return true
@@ -94,8 +80,8 @@ async function mainTask(config: Config) {
     })
 
     let updatedAny = false
-    for (const conn of config.connections) {
-      const success = await syncConnection(conn, config)
+    for (const connection of config.connections) {
+      const success = await syncConnection(connection, config)
       if (success) {
         updatedAny = true
       }
