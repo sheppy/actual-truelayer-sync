@@ -3,15 +3,23 @@ services:
     image: ghcr.io/sheppy/actual-truelayer-sync:latest
     container_name: actual-truelayer-sync
     restart: unless-stopped
-#    depends_on:
-#      - actual-budget
+    # depends_on:
+    #   - actual-budget
     volumes:
       - ./actual-sync/data:/app/data # This is where your config.json lives
     environment:
-      - TZ=Europe/London
+      # - TZ=Europe/London
       - ACTUAL_SERVER_URL=http://[HOST_IP]:5006
       - ACTUAL_SERVER_PASSWORD=[PASSWORD]
       - ACTUAL_SYNC_ID=[SYNC_ID]
       - TRUELAYER_CLIENT_ID=[TRUELAYER_CLIENT_ID]
       - TRUELAYER_CLIENT_SECRET=[TRUELAYER_CLIENT_SECRET]
       - CRON_SCHEDULE=0 */4 * * * # Example: Every 4 hours
+    healthcheck:
+      # Health check that the config.json file has been modified recently, indicating that the sync process is running and updating the file as expected.
+      # 300 minutes (5 hours) against a 4-hour schedule — gives an hour of buffer
+      test: ["CMD-SHELL", "find /app/data/config.json -mmin -300 | grep -q ."]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
