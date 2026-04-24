@@ -20,11 +20,12 @@ export async function initActual(options: InitOptions): Promise<void> {
 export async function importTransactions(
   accountId: string,
   transactions: Parameters<typeof actual.importTransactions>[1],
-): Promise<void> {
+): Promise<{ added: string[]; updated: string[] }> {
   const result = await actual.importTransactions(accountId, transactions)
   if (result.errors.length > 0) {
     console.warn(`Import warnings for ${accountId}:`, result.errors)
   }
+  return { added: result.added, updated: result.updated }
 }
 
 export async function shutdownActual(): Promise<void> {

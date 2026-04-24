@@ -68,8 +68,20 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
         const dates = trueLayerTransactions.map((t) => t.timestamp).sort()
         const from = dates[0].slice(0, 10)
         const to = dates[dates.length - 1].slice(0, 10)
-        await importTransactions(configAccount.actualId, transactions)
-        console.log(`${prefix} └ Imported ${transactions.length} items (${from} → ${to}).`)
+        const result = await importTransactions(configAccount.actualId, transactions)
+        const added = result.added.length
+        const updated = result.updated.length
+        let summary: string
+        if (added > 0 && updated > 0) {
+          summary = `Added ${added} and updated ${updated} transaction${updated === 1 ? '' : 's'}`
+        } else if (added > 0) {
+          summary = `Added ${added} transaction${added === 1 ? '' : 's'}`
+        } else if (updated > 0) {
+          summary = `Updated ${updated} transaction${updated === 1 ? '' : 's'}`
+        } else {
+          summary = 'No new transactions'
+        }
+        console.log(`${prefix} └ ${summary} (${from} → ${to}).`)
       } else {
         console.log(`${prefix} └ No new transactions.`)
       }
