@@ -6,7 +6,7 @@ import cron from 'node-cron'
 const CONFIG_PATH = path.join(__dirname, '..', 'data', 'config.json')
 
 const AccountSchema = z.object({
-  truelayerId: z.string().min(1),
+  trueLayerId: z.string().min(1),
   actualId: z.string().min(1),
   friendlyName: z.string().min(1),
   isCard: z.boolean().optional(),

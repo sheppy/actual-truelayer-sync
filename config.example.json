@@ -5,12 +5,12 @@
       "refreshToken": "[TRUELAYER REFRESH TOKEN]",
       "accounts": [
         {
-          "truelayerId": "[TrueLayer account_id]",
+          "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
           "friendlyName": "My friendly account name"
         },
         {
-          "truelayerId": "[TrueLayer account_id]",
+          "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
           "friendlyName": "My friendly other account"
         }
@@ -21,7 +21,7 @@
       "refreshToken": "[TRUELAYER REFRESH TOKEN]",
       "accounts": [
         {
-          "truelayerId": "[TrueLayer account_id]",
+          "trueLayerId": "[TrueLayer account_id]",
           "actualId": "[Actual Budget account_id]",
           "friendlyName": "My savings account name"
         }

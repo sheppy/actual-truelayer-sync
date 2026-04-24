@@ -32,7 +32,7 @@ async function syncConnection(connection: Connection, config: Config): Promise<v
         `[${connection.name}] └ Found ${trueLayerAccounts.length} ${connection.isCard ? 'card' : 'account'}${trueLayerAccounts.length === 1 ? '' : 's'}.`,
       )
 
-      const configuredIds = new Set(connection.accounts.map((a) => a.truelayerId))
+      const configuredIds = new Set(connection.accounts.map((a) => a.trueLayerId))
       const unmatched = trueLayerAccounts.filter((a) => !configuredIds.has(a.account_id))
       if (unmatched.length > 0) {
         console.log(
@@ -67,10 +67,10 @@ async function syncConnection(connection: Connection, config: Config): Promise<v
       console.log(`${prefix} Fetching transactions${fromDate ? ` since ${fromDate}` : ''}...`)
       const isCard = configAccount.isCard ?? connection.isCard ?? false
       const trueLayerTransactions = isCard
-        ? await getCardTransactions(access_token, configAccount.truelayerId, fromDate)
-        : await getAccountTransactions(access_token, configAccount.truelayerId, fromDate)
+        ? await getCardTransactions(access_token, configAccount.trueLayerId, fromDate)
+        : await getAccountTransactions(access_token, configAccount.trueLayerId, fromDate)
 
-      const trueLayerAccount = trueLayerAccountsById.get(configAccount.truelayerId)
+      const trueLayerAccount = trueLayerAccountsById.get(configAccount.trueLayerId)
       const transactions = transformTransactions(trueLayerTransactions, configAccount, trueLayerAccount)
 
       if (transactions.length > 0) {
