@@ -121,3 +121,10 @@ void (async () => {
     })
   }
 })()
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down...')
+  shutdownActual()
+    .catch((err) => console.error('Error during shutdown:', err))
+    .finally(() => process.exit(0))
+})
