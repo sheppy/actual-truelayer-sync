@@ -21,7 +21,12 @@ export async function refreshToken(
   try {
     const res = await axios.post<TrueLayerTokenResponse>(
       AUTH_URL,
-      `grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${refreshToken}`,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+      }).toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     )
     return { access_token: res.data.access_token, refresh_token: res.data.refresh_token }
