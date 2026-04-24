@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import fs from 'fs/promises'
 import path from 'path'
+import cron from 'node-cron'
 
 const CONFIG_PATH = path.join(__dirname, '..', 'data', 'config.json')
 
@@ -29,7 +30,10 @@ const EnvSchema = z.object({
   ACTUAL_SERVER_URL: z.string().url(),
   ACTUAL_SERVER_PASSWORD: z.string().min(1),
   ACTUAL_SYNC_ID: z.string().uuid(),
-  CRON_SCHEDULE: z.string().optional(),
+  CRON_SCHEDULE: z
+    .string()
+    .optional()
+    .refine((val) => val === undefined || cron.validate(val), { message: 'Invalid cron expression' }),
   DEBUG: z.string().optional(),
 })
 
