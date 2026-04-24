@@ -151,10 +151,17 @@ void (async () => {
     console.log(
       `Scheduler initialized with pattern: ${config.env.CRON_SCHEDULE}${timezone ? ` (timezone: ${timezone})` : ''}`,
     )
-    cron.schedule(config.env.CRON_SCHEDULE, () => mainTask(config), {
-      noOverlap: true,
-      ...(timezone ? { timezone } : {}),
-    })
+
+    cron.schedule(
+      config.env.CRON_SCHEDULE,
+      () => {
+        mainTask(config).catch((err) => console.error('Unhandled task error:', err))
+      },
+      {
+        noOverlap: true,
+        ...(timezone ? { timezone } : {}),
+      },
+    )
   }
 })()
 
