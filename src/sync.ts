@@ -7,7 +7,7 @@ import { transformTransactions } from './transform'
 import type { Connection, Config } from './config'
 import type { TrueLayerAccount, TrueLayerCard } from './types'
 
-async function syncConnection(connection: Connection, config: Config) {
+async function syncConnection(connection: Connection, config: Config): Promise<boolean> {
   console.log(`\n[${new Date().toISOString()}] --- Syncing: ${connection.name} ---`)
   try {
     const { access_token, refresh_token: newRefreshToken } = await refreshToken(
@@ -116,9 +116,13 @@ void (async () => {
 
   // 2. Optionally schedule future runs
   if (config.env.CRON_SCHEDULE) {
-    console.log(`Scheduler initialized with pattern: ${config.env.CRON_SCHEDULE}`)
-    cron.schedule(config.env.CRON_SCHEDULE, () => {
-      mainTask(config)
+    const timezone = config.env.TZ
+    console.log(
+      `Scheduler initialized with pattern: ${config.env.CRON_SCHEDULE}${timezone ? ` (timezone: ${timezone})` : ''}`,
+    )
+    cron.schedule(config.env.CRON_SCHEDULE, () => mainTask(config), {
+      noOverlap: true,
+      ...(timezone ? { timezone } : {}),
     })
   }
 })()

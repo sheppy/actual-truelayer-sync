@@ -35,6 +35,7 @@ const EnvSchema = z.object({
     .optional()
     .refine((val) => val === undefined || cron.validate(val), { message: 'Invalid cron expression' }),
   DEBUG: z.string().optional(),
+  TZ: z.string().optional(),
 })
 
 export type Account = z.infer<typeof AccountSchema>
