@@ -40,7 +40,7 @@ async function syncConnection(connection: Connection, config: Config): Promise<v
         )
         for (const a of unmatched) {
           const detail = 'account_type' in a ? ` (${a.account_type})` : ` (${a.card_type})`
-          console.log(`  - ${a.display_name}${detail} — trueLayerId: ${a.account_id}`)
+          console.log(`  └ ${a.display_name}${detail} — trueLayerId: ${a.account_id}`)
         }
       }
     } catch (err) {
