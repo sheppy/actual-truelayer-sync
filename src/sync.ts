@@ -86,11 +86,12 @@ async function mainTask(config: Config) {
       const success = await syncConnection(connection, config)
       if (success) {
         updatedAny = true
+        await writeConfig(config)
       }
     }
 
-    if (updatedAny) {
-      await writeConfig(config)
+    if (!updatedAny) {
+      console.log('No connections synced successfully; config not updated.')
     }
   } catch (e) {
     console.error('Global Sync Error:', String(e))
