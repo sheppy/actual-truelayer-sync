@@ -55,6 +55,8 @@ async function syncConnection(connection: Connection, config: Config) {
       if (transactions.length > 0) {
         await importTransactions(configAccount.actualId, transactions)
         console.log(`Imported ${transactions.length} items to ${configAccount.friendlyName}.`)
+      } else {
+        console.log(`No new transactions for ${configAccount.friendlyName}.`)
       }
     }
     return true
