@@ -1,7 +1,7 @@
-import actual from '@actual-app/api'
 import axios from 'axios'
 import cron from 'node-cron'
 import { loadConfig, writeConfig } from './config'
+import { initActual, importTransactions, shutdownActual } from './actual'
 import { refreshToken, listAccounts, listCards, getAccountTransactions, getCardTransactions } from './truelayer'
 import type { Connection, Config } from './config'
 import type { TrueLayerAccount, TrueLayerCard } from './types'
@@ -67,7 +67,7 @@ async function syncConnection(connection: Connection, config: Config) {
       }))
 
       if (transactions.length > 0) {
-        await actual.importTransactions(account.actualId, transactions)
+        await importTransactions(account.actualId, transactions)
         console.log(`Imported ${transactions.length} items to ${account.friendlyName}.`)
       }
     }
@@ -86,13 +86,12 @@ async function syncConnection(connection: Connection, config: Config) {
 
 async function mainTask(config: Config) {
   try {
-    await actual.init({
+    await initActual({
       serverURL: config.env.ACTUAL_SERVER_URL,
       password: config.env.ACTUAL_SERVER_PASSWORD,
+      syncId: config.env.ACTUAL_SYNC_ID,
       verbose: !!config.env.DEBUG,
-      dataDir: './data',
     })
-    await actual.downloadBudget(config.env.ACTUAL_SYNC_ID)
 
     let updatedAny = false
     for (const conn of config.connections) {
@@ -108,7 +107,7 @@ async function mainTask(config: Config) {
   } catch (e) {
     console.error('Global Sync Error:', String(e))
   } finally {
-    await actual.shutdown()
+    await shutdownActual()
     console.log('Sync cycle finished. Sleeping...')
   }
 }
