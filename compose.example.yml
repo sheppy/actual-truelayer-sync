@@ -3,9 +3,12 @@ services:
     image: ghcr.io/sheppy/actual-truelayer-sync:latest
     container_name: actual-truelayer-sync
     restart: unless-stopped
+#    depends_on:
+#      - actual-budget
     volumes:
       - ./actual-sync/data:/app/data # This is where your config.json lives
     environment:
+      - TZ=Europe/London
       - ACTUAL_SERVER_URL=http://[HOST_IP]:5006
       - ACTUAL_SERVER_PASSWORD=[PASSWORD]
       - ACTUAL_SYNC_ID=[SYNC_ID]

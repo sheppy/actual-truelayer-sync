@@ -26,16 +26,37 @@ You will need:
 You will need the URL to your Actual Budget instance, as well as the password to login. You will also need a syncId,
 it's under Settings → Show advanced settings → ID in the current Actual UI.
 
-Check `compose.example.yml` and `example.env` for the full list of required environment variables.
+Copy `compose.example.yml` to `docker-compose.yml` and `example.env` to `.env`, then fill in the required values.
 
 Note there is a `CRON_SCHEDULE` entry that controls how often the sync runs, it uses standard cron syntax.
-If this is not set, it will on startup - but not run on a schedule.
+If this is not set, the sync runs once on startup and then exits. If you want it to run continuously, set a schedule
+such as `0 */4 * * *` (every 4 hours).
+
+An optional `TZ` environment variable can be set to ensure the cron schedule fires at the expected local time,
+e.g. `TZ=Europe/London`.
 
 ---
 
 ### Config Setup
 
-There is an example config file at `config.example.json`. Copy this and fill in the required values.
+Create a `config.json` in your data directory and fill in the required values, see `config.example.json` for examples.
+
+Each **connection** represents a single bank linked via TrueLayer. A connection has:
+
+- `name` — a friendly label used in logs
+- `refreshToken` — obtained during the bank linking flow (see [Connecting Banks](#connecting-banks))
+- `isCard` — (optional) set to `true` if this connection is a credit card provider (uses TrueLayer's `/cards` endpoint instead of `/accounts`)
+- `accounts` — list of accounts to sync. If you leave this as an empty array, it will log out all the available accounts it finds for this connection on the first run, so you can fill in the IDs and restart
+
+Each **account** within a connection has:
+
+- `trueLayerId` — the TrueLayer `account_id` for this account
+- `actualId` — the Actual Budget account ID to import transactions into (get from the URL in ActualBudget)
+- `friendlyName` — used in logs
+- `flip` — (optional) set to `true` to invert transaction amounts (e.g. if debits are appearing as credits). Credit cards with `isCard: true` have amounts flipped automatically; use `flip: false` to override that.
+- `isCard` — (optional) overrides the connection-level `isCard` for this specific account
+
+See `config.example.json` for a full example covering all options.
 
 ---
 
@@ -60,5 +81,23 @@ curl -X POST https://auth.truelayer.com/connect/token \
 This will return a JSON response containing an `access_token` and a `refresh_token`. Copy the `refresh_token` and add
 it to your `config.json` file for the relevant connection.
 
-Once the connections are in place, if you run the sync with will fetch the accounts and list out the trueLayerIds so
-that you can add those to the config as well. Running after that will start importing transactions.
+---
+
+## Running
+
+Start the container:
+```
+docker compose up -d
+```
+
+On first run, if your `accounts` array is empty (or contains accounts not yet mapped), the sync will log any unmatched
+TrueLayer accounts it finds so you can identify the IDs to add to your config:
+
+```
+[My Bank] Unmatched TrueLayer account (not in config):
+  └ My Current Account (TRANSACTION) — trueLayerId: abc123...
+  └ My Savings Account (SAVINGS) — trueLayerId: def456...
+```
+
+Copy the relevant `trueLayerId` values into your `config.json`, then restart the container. The next run will begin
+importing transactions.
