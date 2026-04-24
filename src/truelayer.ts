@@ -4,17 +4,30 @@ import type { TrueLayerAccount, TrueLayerCard, TrueLayerTransaction, TrueLayerTo
 const BASE_URL = 'https://api.truelayer.com/data/v1'
 const AUTH_URL = 'https://auth.truelayer.com/connect/token'
 
+function sanitiseTrueLayerError(err: unknown): never {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status
+    const code = err.response?.data?.error ?? 'unknown_error'
+    throw new Error(`TrueLayer request failed: ${status ?? 'no status'} — ${code}`)
+  }
+  throw err
+}
+
 export async function refreshToken(
   clientId: string,
   clientSecret: string,
   refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string }> {
-  const res = await axios.post<TrueLayerTokenResponse>(
-    AUTH_URL,
-    `grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${refreshToken}`,
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-  )
-  return { access_token: res.data.access_token, refresh_token: res.data.refresh_token }
+  try {
+    const res = await axios.post<TrueLayerTokenResponse>(
+      AUTH_URL,
+      `grant_type=refresh_token&client_id=${clientId}&client_secret=${clientSecret}&refresh_token=${refreshToken}`,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    )
+    return { access_token: res.data.access_token, refresh_token: res.data.refresh_token }
+  } catch (err) {
+    sanitiseTrueLayerError(err)
+  }
 }
 
 export async function listAccounts(accessToken: string): Promise<TrueLayerAccount[]> {
