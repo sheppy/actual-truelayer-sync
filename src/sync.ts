@@ -15,6 +15,9 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
       config.env.TRUELAYER_CLIENT_SECRET,
       connection.refreshToken,
     )
+
+    const tokenChanged = newRefreshToken !== connection.refreshToken
+    console.log(`[${connection.name}] Refresh token ${tokenChanged ? 'CHANGED' : 'unchanged'}.`)
     connection.refreshToken = newRefreshToken
 
     // Fetch all accounts/cards from TrueLayer, log unmatched, and build a map for flip inference
@@ -59,7 +62,7 @@ async function syncConnection(connection: Connection, config: Config): Promise<b
         console.log(`No new transactions for ${configAccount.friendlyName}.`)
       }
     }
-    return true
+    return tokenChanged
   } catch (err) {
     if (axios.isAxiosError(err)) {
       console.error(`Failed ${connection.name}:`, err.response?.data ?? err.message)
@@ -81,17 +84,11 @@ async function mainTask(config: Config) {
       verbose: !!config.env.DEBUG,
     })
 
-    let updatedAny = false
     for (const connection of config.connections) {
-      const success = await syncConnection(connection, config)
-      if (success) {
-        updatedAny = true
+      const tokenChanged = await syncConnection(connection, config)
+      if (tokenChanged) {
         await writeConfig(config)
       }
-    }
-
-    if (!updatedAny) {
-      console.log('No connections synced successfully; config not updated.')
     }
   } catch (e) {
     console.error('Global Sync Error:', String(e))
