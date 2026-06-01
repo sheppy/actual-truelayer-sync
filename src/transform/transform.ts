@@ -43,7 +43,7 @@ export function transformTransaction(
     account: configAccount.actualId,
     date: trueLayerTransaction.timestamp.split('T')[0]!,
     amount: toActualAmount(trueLayerTransaction.amount, shouldFlipAmount(configAccount, trueLayerAccount)),
-    payee_name: trueLayerTransaction.description,
+    payee_name: trueLayerTransaction.description.replace(/,?\s*Transaction Date:\s*\d{4}-\d{2}-\d{2}/i, '').trim(),
     imported_id: trueLayerTransaction.transaction_id,
     notes:
       includeCategoryInNotes && trueLayerTransaction.transaction_category !== 'UNKNOWN'
