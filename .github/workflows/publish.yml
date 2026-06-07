@@ -36,7 +36,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/serpentslay/actual-truelayer-sync:latest
-            ghcr.io/serpentslay/actual-truelayer-sync:sha-${{ github.sha }}
+            ghcr.io/sheppy/actual-truelayer-sync:latest
+            ghcr.io/sheppy/actual-truelayer-sync:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
