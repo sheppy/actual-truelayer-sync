@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import { loadConfig, writeState } from './config/config'
-import { initActual, shutdownActual } from './actual/actual'
+import { initActual, selectBudget, shutdownActual } from './actual/actual'
 import { syncConnection } from './sync/connection'
 import { log, logError } from './utils/logger'
 import type { Config } from './config/schema'
@@ -12,7 +12,6 @@ async function mainTask(config: Config): Promise<void> {
     await initActual({
       serverURL: config.env.ACTUAL_SERVER_URL,
       password: config.env.ACTUAL_SERVER_PASSWORD,
-      syncId: config.env.ACTUAL_SYNC_ID,
       verbose: !!config.env.DEBUG,
     })
 

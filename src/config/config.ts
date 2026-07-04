@@ -3,6 +3,7 @@ import path from 'path'
 import { log, logError } from '../utils/logger'
 import { Config, EnvSchema, FileConfig, FileConfigSchema, State, StateSchema } from './schema'
 import { readJSON, writeJSON } from '../utils/file'
+import { env } from 'process'
 
 const CONFIG_PATH = path.resolve(__dirname, '..', '..', 'data', 'config.json')
 const STATE_PATH = path.resolve(__dirname, '..', '..', 'data', 'state.json')
@@ -17,7 +18,10 @@ export async function loadConfig(): Promise<Config> {
   }
 
   // Load and validate config file
-  const rawConfig = await readJSON<FileConfig>(CONFIG_PATH)
+  let rawConfig = await readJSON<FileConfig>(CONFIG_PATH)
+  if (envResult.data.ACTUAL_SYNC_ID) {
+    rawConfig = fillMissingBudgetIds(rawConfig, envResult.data.ACTUAL_SYNC_ID)
+  }
   const fileResult = FileConfigSchema.safeParse(rawConfig)
   if (!fileResult.success) {
     const issues = fileResult.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n')
@@ -48,6 +52,20 @@ export async function loadConfig(): Promise<Config> {
   }
 
   return { ...fileResult.data, env: envResult.data, state: stateResult.data }
+}
+
+function fillMissingBudgetIds(config: FileConfig, defaultBudget: string): FileConfig {
+  const updatedConnections = config.connections.map((connection) => {
+    const updatedAccounts = connection.accounts.map((account) => {
+      if (!account.budgetId) {
+        log(['Config'], `Filling missing budgetId for account "${account.friendlyName}" in connection "${connection.name}".`)
+        return { ...account, budgetId: defaultBudget }
+      }
+      return account
+    })
+    return { ...connection, accounts: updatedAccounts }
+  })
+  return { ...config, connections: updatedConnections }
 }
 
 export async function writeState(config: Config): Promise<void> {

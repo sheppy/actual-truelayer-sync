@@ -3,7 +3,6 @@ import actual from '@actual-app/api'
 interface InitOptions {
   serverURL: string
   password: string
-  syncId: string
   verbose: boolean
 }
 
@@ -14,7 +13,15 @@ export async function initActual(options: InitOptions): Promise<void> {
     verbose: options.verbose,
     dataDir: './data',
   })
-  await actual.downloadBudget(options.syncId)
+}
+
+export async function selectBudget(budgetId: string): Promise<void> {
+  const budgets = await actual.getBudgets()
+  const budget = budgets.find((b) => b.groupId === budgetId)
+  if (!budget) {
+    throw new Error(`Budget with ID ${budgetId} not found.`)
+  }
+  await actual.downloadBudget(budgetId)
 }
 
 export async function importTransactions(
@@ -30,6 +37,10 @@ export async function importTransactions(
 
 export async function getAccounts(): Promise<Array<{ id: string; name: string; closed: boolean }>> {
   return actual.getAccounts()
+}
+
+export async function getBudgets(): Promise<Array<{ groupId: string; name: string }>> {
+  return (await actual.getBudgets()).map((b) => ({ groupId: b.groupId, name: b.name }))
 }
 
 export async function shutdownActual(): Promise<void> {

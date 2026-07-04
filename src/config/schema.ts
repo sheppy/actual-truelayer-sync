@@ -3,6 +3,7 @@ import cron from 'node-cron'
 
 export const AccountSchema = z.object({
   trueLayerId: z.string().min(1),
+  budgetId: z.string().min(1),
   actualId: z.string().min(1),
   friendlyName: z.string().min(1),
   isCard: z.boolean().optional(),
@@ -32,7 +33,7 @@ export const EnvSchema = z.object({
   TRUELAYER_CLIENT_SECRET: z.string().min(1),
   ACTUAL_SERVER_URL: z.url(),
   ACTUAL_SERVER_PASSWORD: z.string().min(1),
-  ACTUAL_SYNC_ID: z.uuid(),
+  ACTUAL_SYNC_ID: z.uuid().optional(),
   CRON_SCHEDULE: z
     .string()
     .optional()

@@ -1,4 +1,4 @@
-import { importTransactions } from '../actual/actual'
+import { importTransactions, selectBudget } from '../actual/actual'
 import { getAccountTransactions, getCardTransactions } from '../truelayer/truelayer'
 import { transformTransactions } from '../transform/transform'
 import { computeFromDate } from '../utils/date'
@@ -69,6 +69,8 @@ export async function syncAccount({
   }
 
   try {
+    log(prefix, `└ Importing transactions into budget ID: ${configAccount.budgetId}...`)
+    await selectBudget(configAccount.budgetId)
     const result = await importTransactions(configAccount.actualId, transactions)
     log(prefix, `└ ${buildImportSummary(result.added.length, result.updated.length)} (${from} → ${to}).`)
   } catch (err) {

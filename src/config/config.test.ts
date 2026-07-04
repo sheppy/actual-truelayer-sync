@@ -1,10 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import * as file from '../utils/file'
+import { loadConfig } from './config'
 import { AccountSchema, ConnectionSchema, EnvSchema, FileConfigSchema, StateSchema } from './schema'
+
+vi.mock('../utils/file')
+vi.mock('../utils/logger')
 
 describe('AccountSchema', () => {
   const validAccount = {
     trueLayerId: 'tl-acc-1',
     actualId: 'actual-acc-1',
+    budgetId: 'budget-1',
     friendlyName: 'My Account',
   }
 
@@ -24,6 +30,11 @@ describe('AccountSchema', () => {
 
   it('rejects empty trueLayerId', () => {
     expect(AccountSchema.safeParse({ ...validAccount, trueLayerId: '' }).success).toBe(false)
+  })
+
+  it('rejects missing budgetId', () => {
+    const { budgetId: _, ...rest } = validAccount
+    expect(AccountSchema.safeParse(rest).success).toBe(false)
   })
 
   it('rejects missing actualId', () => {
@@ -58,7 +69,7 @@ describe('ConnectionSchema', () => {
   it('accepts a connection with accounts', () => {
     const result = ConnectionSchema.safeParse({
       ...validConnection,
-      accounts: [{ trueLayerId: 'tl-1', actualId: 'a-1', friendlyName: 'Acc' }],
+      accounts: [{ trueLayerId: 'tl-1', actualId: 'a-1', budgetId: 'b-1', friendlyName: 'Acc' }],
     })
     expect(result.success).toBe(true)
   })
@@ -219,5 +230,104 @@ describe('EnvSchema', () => {
   it('rejects missing ACTUAL_SERVER_PASSWORD', () => {
     const { ACTUAL_SERVER_PASSWORD: _, ...rest } = validEnv
     expect(EnvSchema.safeParse(rest).success).toBe(false)
+  })
+})
+
+describe('loadConfig', () => {
+  const mockFileConfig = {
+    version: 2,
+    connections: [
+      {
+        name: 'My Bank',
+        accounts: [
+          {
+            trueLayerId: 'tl-1',
+            actualId: 'a-1',
+            friendlyName: 'Account without budgetId',
+          },
+          {
+            trueLayerId: 'tl-2',
+            actualId: 'a-2',
+            budgetId: 'existing-budget-id',
+            friendlyName: 'Account with budgetId',
+          },
+        ],
+      },
+    ],
+  }
+
+  const mockState = { connections: {} }
+
+  const mockEnv = {
+    TRUELAYER_CLIENT_ID: 'id',
+    TRUELAYER_CLIENT_SECRET: 'secret',
+    ACTUAL_SERVER_URL: 'http://localhost:5006',
+    ACTUAL_SERVER_PASSWORD: 'pw',
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(file.readJSON).mockImplementation(async (path) => {
+      if (path.toString().endsWith('config.json')) return mockFileConfig
+      if (path.toString().endsWith('state.json')) return mockState
+      return {}
+    })
+  })
+
+  it('fills missing budgetIds when ACTUAL_SYNC_ID is provided', async () => {
+    process.env = { ...mockEnv, ACTUAL_SYNC_ID: 'aaaaaaaa-bbbb-4444-8888-ccccddddeeee' }
+
+    const config = await loadConfig()
+
+    const account1 = config.connections[0].accounts.find((a) => a.trueLayerId === 'tl-1')
+    const account2 = config.connections[0].accounts.find((a) => a.trueLayerId === 'tl-2')
+
+    expect(account1?.budgetId).toBe('aaaaaaaa-bbbb-4444-8888-ccccddddeeee')
+    expect(account2?.budgetId).toBe('existing-budget-id')
+  })
+
+  it('does not overwrite an existing budgetId', async () => {
+    process.env = { ...mockEnv, ACTUAL_SYNC_ID: 'aaaaaaaa-bbbb-4444-8888-ccccddddeeee' }
+
+    const config = await loadConfig()
+
+    const account2 = config.connections[0].accounts.find((a) => a.trueLayerId === 'tl-2')
+    expect(account2?.budgetId).toBe('existing-budget-id')
+  })
+
+  it('throws an error if budgetId is missing and no default is provided', async () => {
+    process.env = { ...mockEnv } // No ACTUAL_SYNC_ID
+
+    await expect(loadConfig()).rejects.toThrow(/Invalid config file/)
+  })
+
+  it('passes validation if all accounts have a budgetId', async () => {
+    vi.mocked(file.readJSON).mockImplementation(async (path) => {
+      if (path.toString().endsWith('config.json'))
+        return {
+          version: 2,
+          connections: [
+            {
+              name: 'My Bank',
+              accounts: [
+                {
+                  trueLayerId: 'tl-1',
+                  actualId: 'a-1',
+                  budgetId: 'b-1',
+                  friendlyName: 'Acc 1',
+                },
+              ],
+            },
+          ],
+        }
+      if (path.toString().endsWith('state.json')) return mockState
+      return {}
+    })
+
+    process.env = { ...mockEnv } // No ACTUAL_SYNC_ID
+
+    // Should not throw
+    const config = await loadConfig()
+    expect(config.connections[0].accounts[0].budgetId).toBe('b-1')
   })
 })

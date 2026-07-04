@@ -16,6 +16,7 @@ const baseConnection: Connection = {
 
 const baseAccount: Account = {
   trueLayerId: 'acc-1',
+  budgetId: 'budget-1',
   actualId: 'actual-acc-1',
   friendlyName: 'Current Account',
 }

@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 /**
+ * @file
+ *
  * Interactive setup script for adding a new TrueLayer connection.
  *
  * Local:  npm run setup
@@ -11,7 +13,7 @@ import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
 import { exchangeCode, getMe, listAccounts, listCards } from '../src/truelayer/truelayer'
-import { initActual, getAccounts, shutdownActual } from '../src/actual/actual'
+import { initActual, getBudgets, getAccounts, shutdownActual, selectBudget } from '../src/actual/actual'
 import { readJSON, writeJSON } from '../src/utils/file'
 import type { FileConfig, State } from '../src/config/schema'
 
@@ -60,7 +62,6 @@ async function main(): Promise<void> {
     TRUELAYER_CLIENT_SECRET: z.string().min(1),
     ACTUAL_SERVER_URL: z.url(),
     ACTUAL_SERVER_PASSWORD: z.string().min(1),
-    ACTUAL_SYNC_ID: z.uuid(),
   })
 
   const envResult = SetupEnvSchema.safeParse(process.env)
@@ -200,12 +201,14 @@ async function main(): Promise<void> {
   type MappedAccount = {
     trueLayerId: string
     actualId: string
+    budgetId: string
     friendlyName: string
     isCard?: boolean
   }
 
   const mappedAccounts: MappedAccount[] = []
   const skippedAccounts: TLAccount[] = []
+  const budgetLookup: Record<string, { name: string; id: string }> = {} // accountId -> budgetId
 
   if (selectedIds.length > 0) {
     console.log('\nConnecting to Actual Budget...')
@@ -215,11 +218,19 @@ async function main(): Promise<void> {
       await initActual({
         serverURL: env.ACTUAL_SERVER_URL,
         password: env.ACTUAL_SERVER_PASSWORD,
-        syncId: env.ACTUAL_SYNC_ID,
         verbose: false,
       })
-      const all = await getAccounts()
-      actualAccounts = all.filter((a) => !a.closed && !mappedActualIds.has(a.id))
+      for (const budget of await getBudgets()) {
+        await selectBudget(budget.groupId)
+        const all = await getAccounts()
+        actualAccounts.push(...all.filter((a) => !a.closed && !mappedActualIds.has(a.id)))
+        for (const a of all) {
+          if (!a.closed) {
+            budgetLookup[a.id] = { name: budget.name, id: budget.groupId }
+          
+          }
+        }
+      }
     } catch (err) {
       console.error(`Could not connect to Actual Budget: ${err instanceof Error ? err.message : String(err)}`)
       console.log('Skipping account mapping — add actualId values to config.json manually.\n')
@@ -248,7 +259,7 @@ async function main(): Promise<void> {
       const actualId = await select({
         message: `Map "${tlAccount.label}" to which Actual Budget account?`,
         choices: [
-          ...actualAccounts.map((a) => ({ name: a.name, value: a.id })),
+          ...actualAccounts.map((a) => ({ name: `${a.name} (${budgetLookup[a.id].name})}`, value: a.id })),
           { name: "I haven't created it yet — skip for now", value: SKIP },
         ],
       })
@@ -267,6 +278,7 @@ async function main(): Promise<void> {
       const account: MappedAccount = {
         trueLayerId,
         actualId,
+        budgetId: budgetLookup[actualId].id,
         friendlyName: abAccount.name,
       }
       if (connectionType === 'cards') account.isCard = true
