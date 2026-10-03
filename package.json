@@ -22,7 +22,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@actual-app/api": "26.6.0",
+    "@actual-app/api": "26.10.0",
     "@inquirer/prompts": "8.4.2",
     "axios": "1.17.0",
     "node-cron": "4.2.1",
