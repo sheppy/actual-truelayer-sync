@@ -82,12 +82,18 @@ export async function listCards(accessToken: string): Promise<TrueLayerCard[]> {
   return res.data.results
 }
 
+// TrueLayer only applies a date filter when `from` and `to` are sent together; `from` on its own is ignored
+// and the full available history is returned. `to` is the current time so today's transactions are included.
+function dateRangeParams(from?: string): { from?: string; to?: string } {
+  return from ? { from, to: new Date().toISOString() } : {}
+}
+
 export async function getAccountTransactions(
   accessToken: string,
   accountId: string,
   from?: string,
 ): Promise<TrueLayerTransaction[]> {
-  const params = from ? { from } : {}
+  const params = dateRangeParams(from)
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/accounts/${accountId}/transactions`, {
     headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
     params,
@@ -100,7 +106,7 @@ export async function getCardTransactions(
   cardId: string,
   from?: string,
 ): Promise<TrueLayerTransaction[]> {
-  const params = from ? { from } : {}
+  const params = dateRangeParams(from)
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/cards/${cardId}/transactions`, {
     headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
     params,

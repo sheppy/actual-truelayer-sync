@@ -141,10 +141,13 @@ describe('getAccountTransactions', () => {
     expect(result[0].transaction_id).toBe('txn-1')
   })
 
-  it('passes from param when provided', async () => {
+  it('passes from with a to timestamp when provided (TrueLayer ignores from on its own)', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-10T12:34:56Z'))
     mockedAxios.get.mockResolvedValueOnce({ data: { results: [] } })
     await getAccountTransactions('token', 'acc-1', '2026-04-01')
-    expect(mockedAxios.get.mock.calls[0][1]?.params).toEqual({ from: '2026-04-01' })
+    expect(mockedAxios.get.mock.calls[0][1]?.params).toEqual({ from: '2026-04-01', to: '2026-05-10T12:34:56.000Z' })
+    vi.useRealTimers()
   })
 
   it('passes empty params when from is not provided', async () => {
@@ -170,10 +173,13 @@ describe('getCardTransactions', () => {
     expect(result[0].transaction_id).toBe('txn-1')
   })
 
-  it('passes from param when provided', async () => {
+  it('passes from with a to timestamp when provided (TrueLayer ignores from on its own)', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-10T12:34:56Z'))
     mockedAxios.get.mockResolvedValueOnce({ data: { results: [] } })
     await getCardTransactions('token', 'card-1', '2026-04-01')
-    expect(mockedAxios.get.mock.calls[0][1]?.params).toEqual({ from: '2026-04-01' })
+    expect(mockedAxios.get.mock.calls[0][1]?.params).toEqual({ from: '2026-04-01', to: '2026-05-10T12:34:56.000Z' })
+    vi.useRealTimers()
   })
 
   it('passes empty params when from is not provided', async () => {
