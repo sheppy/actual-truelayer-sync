@@ -1,3 +1,6 @@
+import { installFetchRetry } from './utils/fetch-retry'
+installFetchRetry() // must run before @actual-app/api is loaded
+
 import cron from 'node-cron'
 import { loadConfig, writeState } from './config/config'
 import { initActual, shutdownActual } from './actual/actual'
