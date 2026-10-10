@@ -113,9 +113,7 @@ describe('syncConnection', () => {
 
     await syncConnection(baseConnection, configWithState)
 
-    expect(account.syncAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ lastSyncDate: '2026-04-24' }),
-    )
+    expect(account.syncAccount).toHaveBeenCalledWith(expect.objectContaining({ lastSyncDate: '2026-04-24' }))
   })
 
   it('returns updated accounts with lastSyncDate when syncAccount returns true', async () => {
@@ -201,5 +199,33 @@ describe('syncConnection', () => {
     await syncConnection(baseConnection, baseConfig, true)
 
     expect(account.syncAccount).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }))
+  })
+
+  it('logs an error when the bank consent is about to expire', async () => {
+    const { logError } = await import('../utils/logger')
+    vi.mocked(truelayer.refreshToken).mockResolvedValueOnce({ access_token: 'a', refresh_token: 'old-refresh-token' })
+    vi.mocked(truelayer.getMe).mockResolvedValueOnce({
+      credentials_id: 'c',
+      client_id: 'id',
+      provider: { display_name: 'Bank', provider_id: 'bank' },
+      consent_expires_at: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+    })
+    vi.mocked(accounts.fetchAccountMap).mockResolvedValueOnce(new Map())
+    vi.mocked(account.syncAccount).mockResolvedValueOnce(false)
+
+    await syncConnection(baseConnection, baseConfig)
+
+    expect(logError).toHaveBeenCalledWith(['My Bank'], expect.stringContaining('Bank consent expires on'))
+  })
+
+  it('keeps syncing when the consent lookup fails', async () => {
+    vi.mocked(truelayer.refreshToken).mockResolvedValueOnce({ access_token: 'a', refresh_token: 'new-refresh' })
+    vi.mocked(truelayer.getMe).mockRejectedValueOnce(new Error('403'))
+    vi.mocked(accounts.fetchAccountMap).mockResolvedValueOnce(new Map())
+    vi.mocked(account.syncAccount).mockResolvedValueOnce(false)
+
+    const result = await syncConnection(baseConnection, baseConfig)
+
+    expect(result?.refreshToken).toBe('new-refresh')
   })
 })

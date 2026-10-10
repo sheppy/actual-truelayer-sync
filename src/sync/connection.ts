@@ -1,4 +1,5 @@
-import { refreshToken } from '../truelayer/truelayer'
+import { getMe, refreshToken } from '../truelayer/truelayer'
+import { describeConsent } from '../utils/consent'
 import { syncAccount } from './account'
 import { fetchAccountMap } from './accounts'
 import { currentDate } from '../utils/date'
@@ -39,6 +40,18 @@ export async function syncConnection(
 
   const tokenChanged = newRefreshToken !== connectionState.refreshToken
   log(prefix, `└ Refresh token ${tokenChanged ? 'CHANGED' : 'unchanged'}.`)
+
+  // Banks' Open Banking consent expires (usually after 90 days); warn ahead of time. Never fails the sync.
+  try {
+    const me = await getMe(accessToken)
+    const consent = describeConsent(me?.consent_expires_at, config.env.CONSENT_WARNING_DAYS)
+    if (consent) {
+      if (consent.expiringSoon) logError(prefix, consent.message)
+      else log(prefix, consent.message)
+    }
+  } catch {
+    // consent details are informational only
+  }
 
   let trueLayerAccountsById: Map<string, TrueLayerAccount | TrueLayerCard>
   try {

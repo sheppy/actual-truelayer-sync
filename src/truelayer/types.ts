@@ -1,6 +1,9 @@
 export type TrueLayerMe = {
   credentials_id: string
   client_id: string
+  consent_status?: string
+  consent_created_at?: string
+  consent_expires_at?: string
   provider: {
     display_name: string
     provider_id: string

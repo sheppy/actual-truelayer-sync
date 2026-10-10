@@ -187,6 +187,12 @@ Set `TZ` to ensure the schedule fires at the expected local time:
 TZ=Europe/London
 ```
 
+Each run logs when every connection's bank consent expires (Open Banking consents usually last 90 days). When a consent is within `CONSENT_WARNING_DAYS` (default `7`) of expiring, or has expired, it is logged as an error so you have time to re-authorise the connection with the setup script:
+
+```
+CONSENT_WARNING_DAYS=14
+```
+
 View logs:
 
 ```
