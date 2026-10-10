@@ -70,14 +70,16 @@ export async function getMe(accessToken: string): Promise<TrueLayerMe> {
 
 export async function listAccounts(accessToken: string): Promise<TrueLayerAccount[]> {
   const res = await axios.get<{ results: TrueLayerAccount[] }>(`${BASE_URL}/accounts`, {
-    headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
+    headers: { Authorization: `Bearer ${accessToken}` },
+    timeout: NETWORK_TIMEOUT,
   })
   return res.data.results
 }
 
 export async function listCards(accessToken: string): Promise<TrueLayerCard[]> {
   const res = await axios.get<{ results: TrueLayerCard[] }>(`${BASE_URL}/cards`, {
-    headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
+    headers: { Authorization: `Bearer ${accessToken}` },
+    timeout: NETWORK_TIMEOUT,
   })
   return res.data.results
 }
@@ -89,7 +91,8 @@ export async function getAccountTransactions(
 ): Promise<TrueLayerTransaction[]> {
   const params = from ? { from } : {}
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/accounts/${accountId}/transactions`, {
-    headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
+    headers: { Authorization: `Bearer ${accessToken}` },
+    timeout: NETWORK_TIMEOUT,
     params,
   })
   return res.data.results
@@ -102,7 +105,8 @@ export async function getCardTransactions(
 ): Promise<TrueLayerTransaction[]> {
   const params = from ? { from } : {}
   const res = await axios.get<{ results: TrueLayerTransaction[] }>(`${BASE_URL}/cards/${cardId}/transactions`, {
-    headers: { Authorization: `Bearer ${accessToken}`, timeout: NETWORK_TIMEOUT },
+    headers: { Authorization: `Bearer ${accessToken}` },
+    timeout: NETWORK_TIMEOUT,
     params,
   })
   return res.data.results

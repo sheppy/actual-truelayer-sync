@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
 import { refreshToken, listAccounts, listCards, getAccountTransactions, getCardTransactions } from './truelayer'
 import type { TrueLayerAccount, TrueLayerCard, TrueLayerTransaction } from './types'
+import { NETWORK_TIMEOUT } from '../utils/network'
 
 vi.mock('axios')
 const mockedAxios = vi.mocked(axios, true)
@@ -186,5 +187,24 @@ describe('getCardTransactions', () => {
     mockedAxios.get.mockResolvedValueOnce({ data: { results: [] } })
     await getCardTransactions('token', 'card-1')
     expect(mockedAxios.get.mock.calls[0][0]).toContain('/cards/card-1/transactions')
+  })
+})
+
+describe('request timeouts', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const cases: Array<[string, () => Promise<unknown>]> = [
+    ['listAccounts', () => listAccounts('token')],
+    ['listCards', () => listCards('token')],
+    ['getAccountTransactions', () => getAccountTransactions('token', 'acc-1')],
+    ['getCardTransactions', () => getCardTransactions('token', 'card-1')],
+  ]
+
+  it.each(cases)('%s sets the axios timeout option (not a header)', async (_name, call) => {
+    mockedAxios.get.mockResolvedValueOnce({ data: { results: [] } })
+    await call()
+    const options = mockedAxios.get.mock.calls[0][1]
+    expect(options?.timeout).toBe(NETWORK_TIMEOUT)
+    expect(options?.headers).not.toHaveProperty('timeout')
   })
 })
