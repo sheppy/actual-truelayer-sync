@@ -1,10 +1,20 @@
 import actual from '@actual-app/api'
+import { getApiVersion, getServerVersion, mismatchMessage, versionsMatch } from './version'
 
 interface InitOptions {
   serverURL: string
   password: string
   syncId: string
   verbose: boolean
+}
+
+/** Returns a warning message if the server and @actual-app/api versions differ, otherwise undefined. */
+export async function checkActualVersion(serverURL: string): Promise<string | undefined> {
+  const [serverVersion, apiVersion] = [await getServerVersion(serverURL), getApiVersion()]
+  if (serverVersion && apiVersion && !versionsMatch(serverVersion, apiVersion)) {
+    return mismatchMessage(serverVersion, apiVersion)
+  }
+  return undefined
 }
 
 export async function initActual(options: InitOptions): Promise<void> {
@@ -14,7 +24,17 @@ export async function initActual(options: InitOptions): Promise<void> {
     verbose: options.verbose,
     dataDir: './data',
   })
-  await actual.downloadBudget(options.syncId)
+  try {
+    await actual.downloadBudget(options.syncId)
+  } catch (err) {
+    if (String((err as Error)?.message ?? err).includes('out-of-sync-migrations')) {
+      const hint = await checkActualVersion(options.serverURL)
+      throw new Error(
+        `Failed to open budget: out-of-sync-migrations. ${hint ?? 'Make sure @actual-app/api matches your Actual server version.'}`,
+      )
+    }
+    throw err
+  }
 }
 
 export async function importTransactions(

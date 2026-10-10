@@ -1,6 +1,6 @@
 import cron from 'node-cron'
 import { loadConfig, writeState } from './config/config'
-import { initActual, shutdownActual } from './actual/actual'
+import { checkActualVersion, initActual, shutdownActual } from './actual/actual'
 import { syncConnection } from './sync/connection'
 import { log, logError } from './utils/logger'
 import type { Config } from './config/schema'
@@ -9,6 +9,9 @@ const dryRun = process.argv.includes('--dry-run')
 
 async function mainTask(config: Config): Promise<void> {
   try {
+    const versionWarning = await checkActualVersion(config.env.ACTUAL_SERVER_URL)
+    if (versionWarning) logError(['Actual'], versionWarning)
+
     await initActual({
       serverURL: config.env.ACTUAL_SERVER_URL,
       password: config.env.ACTUAL_SERVER_PASSWORD,
