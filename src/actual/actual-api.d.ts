@@ -16,7 +16,8 @@ declare module '@actual-app/api' {
         cleared?: boolean
         account?: string
       }[],
-    ): Promise<{ errors: unknown[]; added: string[]; updated: string[] }>
+      options?: { dryRun?: boolean; defaultCleared?: boolean },
+    ): Promise<{ errors: unknown[]; added: unknown[]; updated: unknown[] }>
     shutdown(): Promise<void>
   }
   export default actual

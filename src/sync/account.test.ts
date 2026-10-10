@@ -137,10 +137,34 @@ describe('syncAccount', () => {
 
   it('returns false and does not import when dryRun is true', async () => {
     vi.mocked(truelayer.getAccountTransactions).mockResolvedValueOnce([mockTransaction])
+    vi.mocked(actual.previewImport).mockResolvedValueOnce({ wouldAdd: 0, wouldMatch: 1 })
 
     const result = await syncAccount({ ...baseOptions, configAccount: baseAccount, dryRun: true })
 
     expect(result).toBe(false)
     expect(actual.importTransactions).not.toHaveBeenCalled()
+  })
+
+  it('previews the import against Actual when dryRun is true', async () => {
+    const { log } = await import('../utils/logger')
+    vi.mocked(truelayer.getAccountTransactions).mockResolvedValueOnce([mockTransaction])
+    vi.mocked(actual.previewImport).mockResolvedValueOnce({ wouldAdd: 1, wouldMatch: 0 })
+
+    await syncAccount({ ...baseOptions, configAccount: baseAccount, dryRun: true })
+
+    expect(actual.previewImport).toHaveBeenCalledWith('actual-acc-1', expect.any(Array))
+    expect(log).toHaveBeenCalledWith(
+      ['My Bank', 'Current Account'],
+      expect.stringContaining('Would add 1 new transaction; 0 match existing ones'),
+    )
+  })
+
+  it('still returns false when the dry-run preview fails', async () => {
+    vi.mocked(truelayer.getAccountTransactions).mockResolvedValueOnce([mockTransaction])
+    vi.mocked(actual.previewImport).mockRejectedValueOnce(new Error('preview failed'))
+
+    const result = await syncAccount({ ...baseOptions, configAccount: baseAccount, dryRun: true })
+
+    expect(result).toBe(false)
   })
 })

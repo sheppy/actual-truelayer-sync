@@ -193,6 +193,18 @@ View logs:
 docker compose logs -f actual-truelayer-sync
 ```
 
+### Avoiding duplicates when migrating from another app
+
+Actual matches incoming bank transactions to ones already in your budget (same amount, nearby date) so they aren't duplicated — but **only against existing transactions that have no `imported_id`**. Transactions brought in by another importer (for example Actual's YNAB import, which keeps YNAB's own `YNAB:...` import IDs) carry an `imported_id`, so on the first sync every transaction TrueLayer returns for that period is added again.
+
+Before the first real sync of an account that already has history, do a dry run:
+
+```
+docker compose run --rm actual-truelayer-sync node dist/sync.js --dry-run
+```
+
+It uses Actual's own matching without saving anything and reports, per account, how many transactions would be added versus matched. If it would add transactions you already have, clear the old importer's `imported_id` values on that account first (they are only used for de-duplication), then re-run the dry run until it reports only genuinely new transactions.
+
 ---
 
 ## Migrating from v1

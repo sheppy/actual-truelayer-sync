@@ -1,4 +1,4 @@
-import { importTransactions } from '../actual/actual'
+import { importTransactions, previewImport } from '../actual/actual'
 import { getAccountTransactions, getCardTransactions } from '../truelayer/truelayer'
 import { transformTransactions } from '../transform/transform'
 import { computeFromDate } from '../utils/date'
@@ -64,7 +64,15 @@ export async function syncAccount({
   const to = dates[dates.length - 1].slice(0, 10)
 
   if (dryRun) {
-    log(prefix, `└ [DRY RUN] Would import ${transactions.length} transactions (${from} → ${to}).`)
+    try {
+      const { wouldAdd, wouldMatch } = await previewImport(configAccount.actualId, transactions)
+      log(
+        prefix,
+        `└ [DRY RUN] Would add ${wouldAdd} new transaction${wouldAdd === 1 ? '' : 's'}; ${wouldMatch} match existing ones (${from} → ${to}).`,
+      )
+    } catch (err) {
+      logError(prefix, '[DRY RUN] Failed to preview import:', err)
+    }
     return false
   }
 
